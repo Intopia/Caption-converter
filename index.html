@@ -3,17 +3,35 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Caption converter – SRT/WEBVTT</title>
+<title>Caption converter (SRT/VTT) - Intopia</title>
+<link rel="shortcut icon" href="https://intopia.digital/wp-content/uploads/2017/06/cropped-Intopia_FINAL_icon-32x32.png" sizes="32x32">
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
   :root {
-    --ink: #1b1f23;
-    --paper: #fbfaf7;
+    --ink: #16233d;
+    --ink-soft: #4a5875;
+    --paper: #efefef;
     --panel: #ffffff;
-    --line: #d8d4cb;
-    --accent: #2f5d50;
-    --accent-ink: #ffffff;
-    --muted: #6b6459;
-    --error: #a83232;
+    --line: #d9d2be;
+    --border-strong: #dddddd;
+    --red: #a5322a;
+    --red-bg: #fbeae7;
+    --green: #29614a;
+    --green-bg: #e9f2ec;
+    --amber: #93641a;
+    --amber-bg: #faf1dc;
+    --neutral: #5b6472;
+    --neutral-bg: #f4f3ef;
+    --info: #29506b;
+    --info-bg: #e6eef3;
+    --focus: #1b4fbf;
+    --brand: #c03c0c;
+    --font-brand: 'Source Sans Pro', 'Helvetica Neue', Helvetica, Arial, Frutiger, 'Frutiger Linotype', Univers, Calibri, 'Gill Sans', 'Gill Sans MT', 'Myriad Pro', Myriad, 'DejaVu Sans Condensed', 'Liberation Sans', 'Nimbus Sans L', Tahoma, Geneva, sans-serif;
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-body: 'IBM Plex Sans', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+    --radius: 4px;
   }
 
   * { box-sizing: border-box; }
@@ -22,9 +40,13 @@
     margin: 0;
     background: var(--paper);
     color: var(--ink);
-    font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    font-family: var(--font-body);
     line-height: 1.5;
   }
+
+  :focus { outline: 3px solid var(--focus); outline-offset: 2px; }
+  :focus:not(:focus-visible) { outline: none; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 
   main {
     max-width: 640px;
@@ -32,30 +54,43 @@
     padding: 48px 24px 80px;
   }
 
-  h1 {
-    font-size: 1.75rem;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    margin: 0 0 4px;
+  header.brand {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 40px;
   }
 
-  .subhead {
-    color: var(--muted);
+  .intopia-logo { width: 180px; height: auto; }
+
+  .brand-text h1 {
+    font-family: var(--font-brand);
+    color: var(--brand);
+    font-size: 2.4rem;
+    font-weight: 600;
+    margin: 0 0 10px;
+    letter-spacing: normal;
+  }
+
+  .privacy-note {
+    color: var(--ink-soft);
     font-size: 0.95rem;
-    margin: 0 0 40px;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    margin: 0;
   }
 
   section.converter {
     background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 4px;
+    border: 2px solid var(--border-strong);
+    border-radius: var(--radius);
     padding: 24px;
     margin-bottom: 24px;
   }
 
   section.converter h2 {
-    font-size: 1.05rem;
+    font-family: var(--font-display);
+    color: var(--ink);
+    font-size: 1.15rem;
     margin: 0 0 18px;
     font-weight: 600;
   }
@@ -64,7 +99,6 @@
     display: flex;
     flex-direction: column;
     gap: 14px;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
 
   label.field-label {
@@ -76,85 +110,103 @@
     font-family: inherit;
     font-size: 0.9rem;
     padding: 8px;
-    border: 1px solid var(--line);
-    border-radius: 3px;
+    border: 2px solid var(--border-strong);
+    border-radius: var(--radius);
     background: var(--paper);
+    color: var(--ink);
   }
 
   button {
-    align-self: flex-start;
-    background: var(--accent);
-    color: var(--accent-ink);
-    border: none;
-    padding: 10px 20px;
-    font-size: 0.9rem;
-    font-family: inherit;
-    border-radius: 3px;
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 1.1rem;
     cursor: pointer;
-    transition: background 0.15s ease;
+    border-radius: var(--radius);
+    padding: 12px 22px;
+    align-self: flex-start;
   }
 
-  button:hover { background: #24473d; }
-  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  button:disabled { background: #a9a49a; cursor: not-allowed; }
+  .btn-primary {
+    background: var(--brand);
+    color: #ffffff;
+    border: 2px solid var(--brand);
+  }
+
+  .btn-primary:hover { background: #9c3009; border-color: #9c3009; }
+  .btn-primary:disabled { background: #c9998a; border-color: #c9998a; cursor: not-allowed; }
 
   .status {
-    font-size: 0.85rem;
+    font-size: 0.88rem;
     min-height: 1.2em;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    padding: 0;
+    border-radius: var(--radius);
   }
 
-  .status.error { color: var(--error); }
-  .status.ok { color: var(--accent); }
+  .status.filled {
+    padding: 10px 14px;
+  }
+
+  .status.error { color: var(--red); background: var(--red-bg); }
+  .status.ok { color: var(--green); background: var(--green-bg); }
+  .status.info { color: var(--info); background: var(--info-bg); }
 
   .output {
     display: none;
     margin-top: 6px;
     padding: 14px 16px;
-    background: var(--paper);
-    border: 1px dashed var(--line);
-    border-radius: 3px;
+    background: var(--neutral-bg);
+    border: 2px solid var(--border-strong);
+    border-radius: var(--radius);
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
 
   .output.visible { display: flex; }
 
   .output .filename {
-    font-size: 0.9rem;
+    font-family: var(--font-mono);
+    font-size: 0.88rem;
     word-break: break-all;
+    color: var(--ink);
   }
 
   .output a.download-btn {
     flex-shrink: 0;
-    background: var(--ink);
-    color: #fff;
+    background: var(--brand);
+    color: #ffffff;
     text-decoration: none;
-    padding: 8px 16px;
-    border-radius: 3px;
-    font-size: 0.85rem;
+    padding: 10px 20px;
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+    font-weight: 600;
+    font-family: var(--font-body);
+    border: 2px solid var(--brand);
   }
 
-  .output a.download-btn:hover { background: #000; }
+  .output a.download-btn:hover { background: #9c3009; border-color: #9c3009; }
 
   @media (prefers-reduced-motion: reduce) {
-    button { transition: none; }
+    button, .btn-primary { transition: none; }
   }
 </style>
 </head>
 <body>
 <main>
-  <h1>Caption converter – SRT/WEBVTT</h1>
-  <p class="subhead">Convert subtitle files between .srt and .vtt formats, entirely in your browser.</p>
+  <header class="brand">
+    <img src="https://intopia.digital/wp-content/themes/intopia-refresh/assets/images/intopia.png" alt="Intopia logo" class="intopia-logo">
+    <div class="brand-text">
+      <h1>Caption converter (SRT/VTT)</h1>
+      <p class="privacy-note">Files are converted entirely in your browser and never uploaded anywhere.</p>
+    </div>
+  </header>
 
   <section class="converter">
     <h2>SRT to WEBVTT</h2>
     <form id="srtForm">
       <label class="field-label" for="srtInput">Select a SRT file</label>
       <input type="file" id="srtInput" accept=".srt,text/plain" required>
-      <button type="submit">Convert to WEBVTT</button>
+      <button type="submit" class="btn-primary">Convert to WEBVTT</button>
       <p class="status" id="srtStatus"></p>
     </form>
     <div class="output" id="srtOutput">
@@ -168,7 +220,7 @@
     <form id="vttForm">
       <label class="field-label" for="vttInput">Select a WEBVTT file</label>
       <input type="file" id="vttInput" accept=".vtt,text/vtt" required>
-      <button type="submit">Convert to SRT</button>
+      <button type="submit" class="btn-primary">Convert to SRT</button>
       <p class="status" id="vttStatus"></p>
     </form>
     <div class="output" id="vttOutput">
@@ -367,12 +419,13 @@
       var file = input.files && input.files[0];
       if (!file) {
         status.textContent = "Choose a file first.";
-        status.className = "status error";
+        status.className = "status filled error";
         return;
       }
 
       submitBtn.disabled = true;
       status.textContent = "Converting…";
+      status.className = "status filled info";
 
       readFileAsText(file)
         .then(function (raw) {
@@ -389,11 +442,11 @@
 
           output.classList.add("visible");
           status.textContent = "Converted successfully.";
-          status.className = "status ok";
+          status.className = "status filled ok";
         })
         .catch(function (err) {
           status.textContent = err.message || "Something went wrong during conversion.";
-          status.className = "status error";
+          status.className = "status filled error";
         })
         .finally(function () {
           submitBtn.disabled = false;
