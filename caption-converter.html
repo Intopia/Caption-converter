@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Caption converter – SRT/WEBVTT</title>
+<style>
+  :root {
+    --ink: #1b1f23;
+    --paper: #fbfaf7;
+    --panel: #ffffff;
+    --line: #d8d4cb;
+    --accent: #2f5d50;
+    --accent-ink: #ffffff;
+    --muted: #6b6459;
+    --error: #a83232;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    line-height: 1.5;
+  }
+
+  main {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+
+  h1 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0 0 4px;
+  }
+
+  .subhead {
+    color: var(--muted);
+    font-size: 0.95rem;
+    margin: 0 0 40px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  section.converter {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+
+  section.converter h2 {
+    font-size: 1.05rem;
+    margin: 0 0 18px;
+    font-weight: 600;
+  }
+
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  label.field-label {
+    font-size: 0.9rem;
+    color: var(--ink);
+  }
+
+  input[type="file"] {
+    font-family: inherit;
+    font-size: 0.9rem;
+    padding: 8px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: var(--paper);
+  }
+
+  button {
+    align-self: flex-start;
+    background: var(--accent);
+    color: var(--accent-ink);
+    border: none;
+    padding: 10px 20px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+
+  button:hover { background: #24473d; }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button:disabled { background: #a9a49a; cursor: not-allowed; }
+
+  .status {
+    font-size: 0.85rem;
+    min-height: 1.2em;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  .status.error { color: var(--error); }
+  .status.ok { color: var(--accent); }
+
+  .output {
+    display: none;
+    margin-top: 6px;
+    padding: 14px 16px;
+    background: var(--paper);
+    border: 1px dashed var(--line);
+    border-radius: 3px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  .output.visible { display: flex; }
+
+  .output .filename {
+    font-size: 0.9rem;
+    word-break: break-all;
+  }
+
+  .output a.download-btn {
+    flex-shrink: 0;
+    background: var(--ink);
+    color: #fff;
+    text-decoration: none;
+    padding: 8px 16px;
+    border-radius: 3px;
+    font-size: 0.85rem;
+  }
+
+  .output a.download-btn:hover { background: #000; }
+
+  @media (prefers-reduced-motion: reduce) {
+    button { transition: none; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Caption converter – SRT/WEBVTT</h1>
+  <p class="subhead">Convert subtitle files between .srt and .vtt formats, entirely in your browser.</p>
+
+  <section class="converter">
+    <h2>SRT to WEBVTT</h2>
+    <form id="srtForm">
+      <label class="field-label" for="srtInput">Select a SRT file</label>
+      <input type="file" id="srtInput" accept=".srt,text/plain" required>
+      <button type="submit">Convert to WEBVTT</button>
+      <p class="status" id="srtStatus"></p>
+    </form>
+    <div class="output" id="srtOutput">
+      <span class="filename" id="srtOutputName"></span>
+      <a class="download-btn" id="srtDownload" download>Download</a>
+    </div>
+  </section>
+
+  <section class="converter">
+    <h2>WEBVTT to SRT</h2>
+    <form id="vttForm">
+      <label class="field-label" for="vttInput">Select a WEBVTT file</label>
+      <input type="file" id="vttInput" accept=".vtt,text/vtt" required>
+      <button type="submit">Convert to SRT</button>
+      <p class="status" id="vttStatus"></p>
+    </form>
+    <div class="output" id="vttOutput">
+      <span class="filename" id="vttOutputName"></span>
+      <a class="download-btn" id="vttDownload" download>Download</a>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  function readFileAsText(file) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () { resolve(reader.result); };
+      reader.onerror = function () { reject(new Error("Could not read the file.")); };
+      reader.readAsText(file);
+    });
+  }
+
+  function stripExtension(name) {
+    var idx = name.lastIndexOf(".");
+    return idx === -1 ? name : name.slice(0, idx);
+  }
+
+  // Normalize line endings and strip a leading UTF-8 BOM if present.
+  function normalize(text) {
+    return text.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  }
+
+  // --- SRT -> VTT ---------------------------------------------------------
+
+  function srtTimeToVtt(t) {
+    // SRT uses a comma for milliseconds; VTT uses a period.
+    return t.trim().replace(",", ".");
+  }
+
+  function srtToVtt(srtText) {
+    var text = normalize(srtText).trim();
+    if (!text) {
+      throw new Error("The SRT file appears to be empty.");
+    }
+
+    var blocks = text.split(/\n\s*\n/);
+    var cues = [];
+
+    blocks.forEach(function (block) {
+      var lines = block.split("\n").filter(function (l) { return l.length > 0; });
+      if (lines.length === 0) return;
+
+      // First line is usually a numeric index; skip it if so.
+      var startIdx = 0;
+      if (/^\d+$/.test(lines[0].trim())) {
+        startIdx = 1;
+      }
+
+      var timeLine = lines[startIdx];
+      if (!timeLine || timeLine.indexOf("-->") === -1) {
+        return; // Not a valid cue block; skip.
+      }
+
+      var timeParts = timeLine.split("-->");
+      if (timeParts.length !== 2) return;
+
+      var startTime = srtTimeToVtt(timeParts[0]);
+      // The second part can carry cue settings (e.g. "align:start") after the timestamp.
+      var endRaw = timeParts[1].trim();
+      var endSpaceIdx = endRaw.indexOf(" ");
+      var endTime, settings;
+      if (endSpaceIdx === -1) {
+        endTime = srtTimeToVtt(endRaw);
+        settings = "";
+      } else {
+        endTime = srtTimeToVtt(endRaw.slice(0, endSpaceIdx));
+        settings = endRaw.slice(endSpaceIdx).trim();
+      }
+
+      var textLines = lines.slice(startIdx + 1);
+      cues.push({
+        start: startTime,
+        end: endTime,
+        settings: settings,
+        text: textLines.join("\n")
+      });
+    });
+
+    if (cues.length === 0) {
+      throw new Error("No valid subtitle cues were found in this SRT file.");
+    }
+
+    var out = "WEBVTT\n\n";
+    out += cues.map(function (cue) {
+      var timing = cue.start + " --> " + cue.end + (cue.settings ? " " + cue.settings : "");
+      return timing + "\n" + cue.text;
+    }).join("\n\n");
+    out += "\n";
+
+    return out;
+  }
+
+  // --- VTT -> SRT ---------------------------------------------------------
+
+  function vttTimeToSrt(t) {
+    var trimmed = t.trim();
+    // VTT timestamps may omit the hours component (e.g. "01:02.500").
+    var parts = trimmed.split(":");
+    if (parts.length === 2) {
+      trimmed = "00:" + trimmed;
+    }
+    return trimmed.replace(".", ",");
+  }
+
+  function vttToSrt(vttText) {
+    var text = normalize(vttText).trim();
+    if (!text) {
+      throw new Error("The WEBVTT file appears to be empty.");
+    }
+
+    var lines = text.split("\n");
+
+    // Drop the WEBVTT header line and any header-region metadata before the first blank line.
+    if (lines.length && /^WEBVTT/i.test(lines[0].trim())) {
+      lines.shift();
+      while (lines.length && lines[0].trim() !== "") {
+        lines.shift();
+      }
+    }
+
+    var body = lines.join("\n");
+    var blocks = body.split(/\n\s*\n/);
+    var cues = [];
+
+    blocks.forEach(function (block) {
+      var blockLines = block.split("\n").filter(function (l) { return l.length > 0; });
+      if (blockLines.length === 0) return;
+
+      var startIdx = 0;
+      // A cue may have an optional identifier line before the timing line.
+      if (blockLines[0].indexOf("-->") === -1) {
+        startIdx = 1;
+      }
+
+      var timeLine = blockLines[startIdx];
+      if (!timeLine || timeLine.indexOf("-->") === -1) {
+        return; // e.g. NOTE or STYLE blocks; skip.
+      }
+
+      var timeParts = timeLine.split("-->");
+      if (timeParts.length !== 2) return;
+
+      var startTime = vttTimeToSrt(timeParts[0]);
+      var endRaw = timeParts[1].trim();
+      var endSpaceIdx = endRaw.indexOf(" ");
+      var endTime = endSpaceIdx === -1 ? vttTimeToSrt(endRaw) : vttTimeToSrt(endRaw.slice(0, endSpaceIdx));
+
+      var textLines = blockLines.slice(startIdx + 1).map(function (l) {
+        // Strip VTT-only voice/formatting tags like <v Speaker> or <c.className>.
+        return l.replace(/<\/?[^>]+>/g, "");
+      });
+
+      cues.push({ start: startTime, end: endTime, text: textLines.join("\n") });
+    });
+
+    if (cues.length === 0) {
+      throw new Error("No valid subtitle cues were found in this WEBVTT file.");
+    }
+
+    var out = cues.map(function (cue, i) {
+      return (i + 1) + "\n" + cue.start + " --> " + cue.end + "\n" + cue.text;
+    }).join("\n\n");
+    out += "\n";
+
+    return out;
+  }
+
+  // --- Wiring --------------------------------------------------------------
+
+  function setupConverter(opts) {
+    var form = document.getElementById(opts.formId);
+    var input = document.getElementById(opts.inputId);
+    var status = document.getElementById(opts.statusId);
+    var output = document.getElementById(opts.outputId);
+    var outputName = document.getElementById(opts.outputNameId);
+    var downloadLink = document.getElementById(opts.downloadId);
+    var submitBtn = form.querySelector("button[type=submit]");
+    var lastUrl = null;
+
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      status.textContent = "";
+      status.className = "status";
+      output.classList.remove("visible");
+
+      var file = input.files && input.files[0];
+      if (!file) {
+        status.textContent = "Choose a file first.";
+        status.className = "status error";
+        return;
+      }
+
+      submitBtn.disabled = true;
+      status.textContent = "Converting…";
+
+      readFileAsText(file)
+        .then(function (raw) {
+          var converted = opts.convert(raw);
+          var blob = new Blob([converted], { type: opts.mimeType });
+
+          if (lastUrl) URL.revokeObjectURL(lastUrl);
+          lastUrl = URL.createObjectURL(blob);
+
+          var newName = stripExtension(file.name) + opts.extension;
+          outputName.textContent = newName;
+          downloadLink.href = lastUrl;
+          downloadLink.setAttribute("download", newName);
+
+          output.classList.add("visible");
+          status.textContent = "Converted successfully.";
+          status.className = "status ok";
+        })
+        .catch(function (err) {
+          status.textContent = err.message || "Something went wrong during conversion.";
+          status.className = "status error";
+        })
+        .finally(function () {
+          submitBtn.disabled = false;
+        });
+    });
+  }
+
+  setupConverter({
+    formId: "srtForm",
+    inputId: "srtInput",
+    statusId: "srtStatus",
+    outputId: "srtOutput",
+    outputNameId: "srtOutputName",
+    downloadId: "srtDownload",
+    convert: srtToVtt,
+    mimeType: "text/vtt",
+    extension: ".vtt"
+  });
+
+  setupConverter({
+    formId: "vttForm",
+    inputId: "vttInput",
+    statusId: "vttStatus",
+    outputId: "vttOutput",
+    outputNameId: "vttOutputName",
+    downloadId: "vttDownload",
+    convert: vttToSrt,
+    mimeType: "application/x-subrip",
+    extension: ".srt"
+  });
+})();
+</script>
+</body>
+</html>
